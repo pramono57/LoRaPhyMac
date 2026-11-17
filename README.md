@@ -36,7 +36,7 @@ experiment specification. Execution and publication concerns are separated:
   LoRa tables and figures;
 - `src/loraphymac/publications/paper2_scalability/` for Paper 2 outputs.
 
-### Official IJIES Reviewer R1.7
+### Official IJIES Reviewer
 
 The current R1.7 implementation is the APC Load Sweep at
 [`src/loraphymac/experiments/apc_load_sweep/`](src/loraphymac/experiments/apc_load_sweep/).
