@@ -1,0 +1,10 @@
+{
+  "model_id": "rapc",
+  "display_name": "R-APC AA",
+  "policy_id": "legacy",
+  "simulator_config": {
+    "node_ptx_mode": "adaptive",
+    "relay_ptx_mode": "adaptive"
+  },
+  "calibration": null
+}

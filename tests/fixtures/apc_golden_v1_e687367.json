@@ -1,0 +1,73 @@
+{
+  "baseline_id": "paper1-apc-v1-historical",
+  "source_commit": "e687367b8386145e9e6429161c2c1042b6f0ffd8",
+  "description": "Golden historis sebelum causal-state APC dan bounded retries.",
+  "scenario_config": {
+    "seed": 20260909,
+    "sim_time": 120,
+    "area_x": 6000,
+    "area_y": 4000,
+    "node_num": 8,
+    "relay_num": 2,
+    "node_period": 10,
+    "node_jitter": 0,
+    "export_results": false,
+    "export_debug": false,
+    "export_internal": false,
+    "print_summary": false,
+    "print_detail": false,
+    "print_debug": false,
+    "print_internal": false,
+    "plot_routing": false
+  },
+  "metrics_by_mode": {
+    "FF": {
+      "tx_packets": 89,
+      "delivered_packets": 88,
+      "pdr_percent": 98.876,
+      "avg_e2e_delay_ms": 255.179,
+      "total_network_energy_J": 87.040033,
+      "avg_final_node_ptx": 17.0,
+      "avg_final_relay_ptx": 20.0,
+      "apc_tx": 0,
+      "apc_rx": 0,
+      "ptx_update_count": 0
+    },
+    "AF": {
+      "tx_packets": 89,
+      "delivered_packets": 87,
+      "pdr_percent": 97.753,
+      "avg_e2e_delay_ms": 254.038,
+      "total_network_energy_J": 84.931899,
+      "avg_final_node_ptx": 5.0,
+      "avg_final_relay_ptx": 20.0,
+      "apc_tx": 8,
+      "apc_rx": 8,
+      "ptx_update_count": 8
+    },
+    "FA": {
+      "tx_packets": 89,
+      "delivered_packets": 88,
+      "pdr_percent": 98.876,
+      "avg_e2e_delay_ms": 255.179,
+      "total_network_energy_J": 83.058536,
+      "avg_final_node_ptx": 17.0,
+      "avg_final_relay_ptx": 12.0,
+      "apc_tx": 2,
+      "apc_rx": 2,
+      "ptx_update_count": 2
+    },
+    "AA": {
+      "tx_packets": 89,
+      "delivered_packets": 87,
+      "pdr_percent": 97.753,
+      "avg_e2e_delay_ms": 254.038,
+      "total_network_energy_J": 80.950403,
+      "avg_final_node_ptx": 5.0,
+      "avg_final_relay_ptx": 12.0,
+      "apc_tx": 10,
+      "apc_rx": 10,
+      "ptx_update_count": 10
+    }
+  }
+}

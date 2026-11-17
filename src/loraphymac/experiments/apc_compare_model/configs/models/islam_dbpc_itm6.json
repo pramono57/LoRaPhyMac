@@ -1,0 +1,15 @@
+{
+  "model_id": "islam_dbpc_itm6",
+  "display_name": "Islam-DBPC-PTx fixed-SF adaptation (ITM/6 sensitivity)",
+  "policy_id": "islam_algorithm2_fixed_sf_ptx_v1",
+  "simulator_config": {
+    "node_ptx_mode": "fixed",
+    "relay_ptx_mode": "fixed"
+  },
+  "calibration": {
+    "calibration_id": "islam_dbpc_itm90_margin0_fixed_sf7_v1",
+    "manifest": "artifacts/experiments/apc_compare_model/calibration/islam_dbpc_itm0/calibration_manifest.json",
+    "manifest_sha256": "a61f15f546c9480e9439dc87740f537a9db2f1c845e3654b5becec464bffe6bf",
+    "margin_db": 6
+  }
+}

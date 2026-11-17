@@ -1,0 +1,55 @@
+{
+  "schema_version": "w4_routing_snapshot_bindings_v1",
+  "binding_revision": "w4_fixed_reference_dh90_v2",
+  "routing_strategy": "fixed_reference",
+  "reference_delta_h": 90,
+  "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2",
+  "snapshot_creation_provenance": {
+    "branch": "",
+    "head": "e7bb75e367869bfefbac51a980aff18fe1da2fe2",
+    "status_porcelain_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "worktree_dirty": false
+  },
+  "bindings": {
+    "30": {
+      "manifest_path": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep/routing_snapshots/w4_fixed_reference_dh90_v2/seed_30/routing_snapshot_manifest.json",
+      "manifest_sha256": "cc3ed948f3af59842fce89671672e904fdaf5657d708a2609eb8adcc8e9ae111",
+      "snapshot_id": "itm_dh90_s30_eb47f9e9f243",
+      "topology_sha256": "a54337ac645c027348a8e39024e2d5a29ab24b4d847c60a5a9c1efb6b44f33c9",
+      "routing_sha256": "eb47f9e9f2435ae0b89b3b6bebad59978088d41d3b10946cb5b15a2d6a2905ef",
+      "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2"
+    },
+    "36": {
+      "manifest_path": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep/routing_snapshots/w4_fixed_reference_dh90_v2/seed_36/routing_snapshot_manifest.json",
+      "manifest_sha256": "82eccc49797b59e082feab0a7b4d4d6adbead5458d21777eb115e3490750286e",
+      "snapshot_id": "itm_dh90_s36_625d5e65dad3",
+      "topology_sha256": "74afc73c9193a39e2847c81908d9a97ee724ea8a529d8d2bdafe9fbbb2a17585",
+      "routing_sha256": "625d5e65dad3410b9be25e74130698f43e8c3a56a7c966623656616bc9a7b234",
+      "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2"
+    },
+    "42": {
+      "manifest_path": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep/routing_snapshots/w4_fixed_reference_dh90_v2/seed_42/routing_snapshot_manifest.json",
+      "manifest_sha256": "0352ef49b50539d3566270e2681341bbbf0c09e8ec42c0af9671d5ec3d193a39",
+      "snapshot_id": "itm_dh90_s42_b0eae5ad422d",
+      "topology_sha256": "9868f156848212990f38d787a5ca84b03be27b7d72f3a66c9a7a238f66869cf7",
+      "routing_sha256": "b0eae5ad422d1eb272202803a6a952f09dd1421e18873be59937de13e3edc239",
+      "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2"
+    },
+    "48": {
+      "manifest_path": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep/routing_snapshots/w4_fixed_reference_dh90_v2/seed_48/routing_snapshot_manifest.json",
+      "manifest_sha256": "9c96bddf11397c5c73ead6f0e81313b751375321d54a229655ba2f85632c9004",
+      "snapshot_id": "itm_dh90_s48_085c198e6f12",
+      "topology_sha256": "2e912c9ca620eadddc3c6f9791f5d2ed6112e650c8ddaec0ca20c286ec185353",
+      "routing_sha256": "085c198e6f12216eaa48abfbc39657a0e2e37c8e6cdd003785db7c9ad2902172",
+      "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2"
+    },
+    "56": {
+      "manifest_path": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep/routing_snapshots/w4_fixed_reference_dh90_v2/seed_56/routing_snapshot_manifest.json",
+      "manifest_sha256": "0e074d532efc04b823925a8859408320176ce85c44e4c3183c274d6077aaca86",
+      "snapshot_id": "itm_dh90_s56_137d608233ea",
+      "topology_sha256": "2c0c4ccbe6685384d585c88f81c07eb604922f969ae7525dc85067b18ab8f938",
+      "routing_sha256": "137d608233ea36c61c04366b431f3cc95901685b46af6cd2175d303bd8fa3a9f",
+      "source_checkpoint_a_sha": "e7bb75e367869bfefbac51a980aff18fe1da2fe2"
+    }
+  }
+}

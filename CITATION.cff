@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use LoRaPhyMAC in academic work, please cite this software."
+title: "LoRaPhyMAC: A LoRa Multi-hop and Adaptive Power Control Simulator"
+type: software
+authors:
+  - family-names: Pramono
+    given-names: Sigit
+version: 1.0.0
+license: MIT

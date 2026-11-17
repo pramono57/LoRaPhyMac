@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loraphymac"
+version = "1.0.0"
+description = "Event-driven LoRa multi-hop and adaptive power control research simulator"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Sigit Pramono"}]
+dependencies = [
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3",
+  "openpyxl>=3.1,<4",
+  "pandas>=2.2,<3",
+  "scipy>=1.13,<2",
+  "simpy>=4.1,<5",
+  "tabulate>=0.9,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2,<2",
+  "pytest>=7.4,<9",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+loraphymac-multiseed = "loraphymac.run_multiseed_experiments:main"
+loraphymac-single-exploration = "loraphymac.experiments.single_run_exploration.run:main"
+loraphymac-verify-apc-closed-loop = "loraphymac.experiments.apc_closed_loop_verification.run:main"
+loraphymac-publish-rapc-multihop-lora = "loraphymac.publications.paper_rapc_multihop_lora.run:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["loraphymac*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"loraphymac.pyitm" = ["LICENSE"]
+"loraphymac.experiments.single_run_exploration" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+"loraphymac.experiments.apc_closed_loop_verification" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+"loraphymac.experiments.apc_terrain_sweep" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+"loraphymac.experiments.apc_compare_model" = [
+  "configs/*.json",
+  "configs/models/*.json",
+]
+"loraphymac.experiments.apc_compare_model_terrain_sweep" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+"loraphymac.experiments.scalability_relay_bottleneck" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+"loraphymac.publications.paper_rapc_multihop_lora" = ["configs/*.json", "notebooks/*.ipynb"]
+"loraphymac.publications.paper2_scalability" = [
+  "configs/*.json",
+  "notebooks/*.ipynb",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-p no:cacheprovider"
+markers = [
+  "unit: fast isolated tests for one module or class",
+  "characterization: records current behavior without claiming it is ideal",
+  "scientific: validates an independently derived formula or scientific invariant",
+  "integration: tests interaction between multiple simulator components",
+  "extended_research: requires frozen calibration, routing snapshots, production bundles, or other research evidence not included in the initial public source release",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+  ".ipynb_checkpoints",
+  "outputs",
+  "outputs_*",
+  "paper*_results",
+  "artifacts",
+  "src/loraphymac/pyitm/itm.py",
+]
+
+[tool.ruff.lint]
+# Pin the release lint baseline so Ruff upgrades cannot silently expand CI scope.
+select = ["E4", "E7", "E9", "F"]

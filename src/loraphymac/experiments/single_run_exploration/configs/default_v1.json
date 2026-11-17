@@ -1,0 +1,19 @@
+{
+  "experiment_profile": "general_multisf_multibw",
+  "run_id": "exploration_001",
+  "seed": 42,
+  "sim_time": 3600,
+  "node_num": 100,
+  "terrain_delta_h": 90,
+  "relay_tx_ch_ids": [1, 2, 3, 4],
+  "node_ptx_mode": "adaptive",
+  "relay_ptx_mode": "adaptive",
+  "export_summary": true,
+  "export_results": true,
+  "export_debug": true,
+  "plot_routing": true,
+  "print_summary": true,
+  "print_debug": false,
+  "debug_preview_rows": 10,
+  "verbose": true
+}

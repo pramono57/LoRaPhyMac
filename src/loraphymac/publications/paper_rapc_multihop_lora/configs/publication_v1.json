@@ -1,0 +1,11 @@
+{
+  "publication_id": "paper_rapc_multihop_lora",
+  "sources": {
+    "terrain_sweep": "../../../../../artifacts/experiments/apc_terrain_sweep/apc_terrain_sweep_v1_r01",
+    "closed_loop_verification": "../../../../../artifacts/experiments/apc_closed_loop_verification/apc_closed_loop_dh90_s42"
+  },
+  "output_dir": "../../../../../artifacts/publications/paper_rapc_multihop_lora/paper_rapc_multihop_lora_v1",
+  "options": {
+    "comparison_terrain_delta_h": 90
+  }
+}

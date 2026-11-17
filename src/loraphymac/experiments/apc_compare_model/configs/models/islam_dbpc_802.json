@@ -1,0 +1,11 @@
+{
+  "model_id": "islam_dbpc_802",
+  "display_name": "DBPC-802",
+  "policy_id": "islam_algorithm2_ieee80211ah_fixed_sf_ptx_v1",
+  "simulator_config": {
+    "node_ptx_mode": "fixed",
+    "relay_ptx_mode": "fixed",
+    "tx_power_calibration_margin_db": 0
+  },
+  "calibration": null
+}

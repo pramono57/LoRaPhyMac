@@ -1,0 +1,57 @@
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local configuration
+.venv/
+.venv-output-profile/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter and operating-system metadata
+.ipynb_checkpoints/
+*.ipynb
+!src/loraphymac/experiments/single_run_exploration/notebooks/*.ipynb
+!src/loraphymac/experiments/apc_closed_loop_verification/notebooks/*.ipynb
+!src/loraphymac/experiments/apc_terrain_sweep/notebooks/*.ipynb
+!src/loraphymac/experiments/apc_compare_model_terrain_sweep/notebooks/*.ipynb
+!src/loraphymac/experiments/scalability_relay_bottleneck/notebooks/*.ipynb
+!src/loraphymac/publications/paper_rapc_multihop_lora/notebooks/*.ipynb
+!src/loraphymac/publications/paper2_scalability/notebooks/*.ipynb
+.DS_Store
+Thumbs.db
+
+# Editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Office temporary files and generated workbooks
+~$*
+*.xlsx
+*.xls
+
+# Simulator-generated outputs. Keep these locally or archive them in a
+# research-data repository; do not commit multi-seed raw data to GitHub.
+outputs/
+outputs_*/
+results/
+paper*_results/
+artifacts/
+table_*.csv
+*.log

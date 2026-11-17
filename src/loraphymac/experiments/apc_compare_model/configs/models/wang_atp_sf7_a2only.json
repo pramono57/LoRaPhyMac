@@ -1,0 +1,13 @@
+{
+  "model_id": "wang_atp_sf7_a2only",
+  "display_name": "Wang-inspired Algorithm 2-only fixed-SF7",
+  "policy_id": "legacy",
+  "simulator_config": {
+    "node_ptx_mode": "fixed",
+    "relay_ptx_mode": "fixed",
+    "node_ptx_init": null,
+    "relay_ptx_init": null,
+    "frame_default_ack_req": false
+  },
+  "calibration": null
+}

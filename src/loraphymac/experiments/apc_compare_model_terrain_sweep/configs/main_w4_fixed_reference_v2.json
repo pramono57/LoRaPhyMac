@@ -1,0 +1,43 @@
+{
+  "experiment_id": "main_w4_fixed_reference",
+  "output_dir": "../../../../../artifacts/experiments/apc_compare_model_terrain_sweep",
+  "comparison_config": "../../apc_compare_model/configs/comparison.json",
+  "experiment_profile": "apc_compare_model_terrain_sweep_main_w4_fixed_reference_v1",
+  "experiment_track": "MAIN_W4",
+  "reporting_namespace": "main_w4_fixed_reference",
+  "routing_strategy": "fixed_reference",
+  "routing_reference_delta_h": 90,
+  "routing_snapshot_bindings": "routing_snapshot_bindings_w4_dh90_v2.json",
+  "routing_snapshot_bindings_sha256": "1c63d64d83c1c77daa8aabc4b422c6b62e9423310a13331c41c5f3a2a46dd5b5",
+  "comparison_terrains": [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160],
+  "models": [
+    "ff",
+    "aa",
+    "islam_dbpc_802",
+    "islam_dbpc_itm6",
+    "wang_atp_sf7_a2only"
+  ],
+  "source_model_ids": {
+    "aa": "rapc",
+    "islam_dbpc_802": "islam_dbpc_802",
+    "islam_dbpc_itm6": "islam_dbpc_itm6",
+    "wang_atp_sf7_a2only": "wang_atp_sf7_a2only"
+  },
+  "shared_config_overrides": {
+    "node_num": 100,
+    "node_rx_collision_enabled": true,
+    "frame_default_ack_req": false,
+    "application_scheduling_mode": "independent_fifo_v1",
+    "application_rng_policy": "sha256_seed_node_v1",
+    "application_queue_policy": "unbounded_fifo_v1",
+    "application_horizon_policy": "right_censor_waiting_v1"
+  },
+  "factors": {
+    "terrain_delta_h": [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160]
+  },
+  "seeds": [30, 36, 42, 48, 56],
+  "energy_accounting_mode": "corrected",
+  "dbpc_calibration_margin_db": 6,
+  "dbpc_calibration_manifest_sha256": "a61f15f546c9480e9439dc87740f537a9db2f1c845e3654b5becec464bffe6bf",
+  "confidence_level": 0.95
+}

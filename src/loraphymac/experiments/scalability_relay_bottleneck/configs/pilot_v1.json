@@ -1,0 +1,30 @@
+{
+  "experiment_id": "scalability_relay_bottleneck_v1_pilot_r01",
+  "output_dir": "../../../../../artifacts/experiments/scalability_relay_bottleneck",
+  "base_config": {
+    "experiment_profile": "general_multisf_multibw",
+    "sim_time": 3600,
+    "node_sf_list": [7],
+    "node_bw": 125000,
+    "relay_sf": 7,
+    "relay_bw_hz": 125000,
+    "relay_num": 2,
+    "node_ptx_mode": "fixed",
+    "relay_ptx_mode": "fixed",
+    "node_rx_window_enabled": false,
+    "collision_mode": "capture",
+    "collision_sf_interference_mode": "sir_matrix",
+    "collision_sir_matrix_preset": "rakibul_islam_2023_table4",
+    "max_rx_idle_wait_ms": 3000.0,
+    "tx_queue_overflow_policy": "drop_tail"
+  },
+  "factors": {
+    "node_num": [50, 100, 200],
+    "node_period": [60, 30, 15],
+    "relay_duty_cycle": [null, 0.1, 0.01],
+    "relay_tx_waiting_queue_capacity_packets": [null, 100]
+  },
+  "seeds": [30, 36, 42, 48, 56],
+  "retain_debug_tables": false,
+  "confidence_level": 0.95
+}

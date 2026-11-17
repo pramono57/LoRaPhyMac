@@ -1,0 +1,6 @@
+{
+  "publication_id": "paper2_scalability",
+  "source_experiment_dir": "../../../../../artifacts/experiments/scalability_relay_bottleneck/scalability_relay_bottleneck_v1_pilot_r01",
+  "output_dir": "../../../../../artifacts/publications/paper2_scalability/scalability_relay_bottleneck_v1_pilot_r01",
+  "options": {}
+}
