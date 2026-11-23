@@ -19,6 +19,8 @@ from loraphymac.experiments.apc_load_sweep.contract import (
     APC_LOAD_SWEEP_FINAL_PROFILE,
     APC_LOAD_SWEEP_FULL_FACTORIAL_PROFILE,
     APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE,
+    APC_LOAD_SWEEP_STANDARD_PROFILE,
+    APC_LOAD_SWEEP_PILOT_PROFILE,
 )
 from loraphymac.experiments.apc_feedback_robustness_sweep.contract import (
     APC_FEEDBACK_ROBUSTNESS_PROFILE,
@@ -529,6 +531,8 @@ _PROFILE_TO_CONTRACT = MappingProxyType(
         # Pilot changes only the plan size/output profile; per-run scientific
         # evidence is the same as the full-factorial APC load-sweep contract.
         APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE: _LOAD_SWEEP,
+        APC_LOAD_SWEEP_STANDARD_PROFILE: _LOAD_SWEEP,
+        APC_LOAD_SWEEP_PILOT_PROFILE: _LOAD_SWEEP,
         APC_LOAD_SWEEP_PROFILE: _LOAD_SWEEP,
         R1_7_LOAD_PROFILE: _LOAD_SWEEP,
         R1_7_DUTY_PROFILE: _LOAD_SWEEP,

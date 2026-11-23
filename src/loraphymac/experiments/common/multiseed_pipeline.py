@@ -7,6 +7,7 @@ import math
 import os
 import platform
 import re
+import subprocess
 import sys
 import traceback
 import uuid
@@ -33,7 +34,14 @@ from loraphymac.experiments.common.contract_registry import (
 )
 from loraphymac.experiments.common.outputs import (
     OUTPUT_LAYOUT_VERSION,
+    SWEEP_OUTPUT_LAYOUT_VERSION,
     ExperimentArtifactPaths,
+)
+from loraphymac.experiments.common.sweep_standard import (
+    consume_cohort_reservation,
+    standard_manifest_fields,
+    validate_cohort_reservation,
+    write_cohort_readme,
 )
 from loraphymac.experiments.common.scientific_output_adapter import (
     persist_multiseed_run,
@@ -246,12 +254,28 @@ class ExperimentSpec:
     master_table_mode: str = "full"
     scientific_master_policy: Mapping[str, Any] | None = None
     run_matrix: Sequence[Mapping[str, Any]] | None = None
+    output_layout_version: str = OUTPUT_LAYOUT_VERSION
+    design_version: int = 1
+    rerun_number: int = 1
+    execution_id: str | None = None
+    created_at: str | None = None
+    timezone: str | None = None
+    cohort_reservation_path: Path | None = None
+    external_references: Mapping[str, Any] = field(default_factory=dict)
+    input_config_path: Path | None = None
 
     def serializable(self) -> dict:
         value = asdict(self)
         value["output_dir"] = str(self.output_dir)
+        for runtime_field in (
+            "cohort_reservation_path", "execution_id", "created_at", "timezone",
+            "rerun_number",
+            "input_config_path",
+        ):
+            value.pop(runtime_field, None)
         value["factors"] = {key: list(values) for key, values in self.factors.items()}
         value["seeds"] = list(self.seeds)
+        value["external_references"] = dict(self.external_references)
         if self.run_matrix is not None:
             value["run_matrix"] = [dict(row) for row in self.run_matrix]
         else:
@@ -303,6 +327,8 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
         "seed_config_overrides",
         "run_annotations",
         "scientific_master_policy",
+        "output_layout_version",
+        "design_version",
     }
     unknown = set(raw).difference(allowed)
     if unknown:
@@ -458,6 +484,9 @@ def load_experiment_spec(path: str | Path) -> ExperimentSpec:
         confidence_level=confidence,
         master_table_mode=master_table_mode,
         scientific_master_policy=master_policy,
+        output_layout_version=str(raw.get("output_layout_version", OUTPUT_LAYOUT_VERSION)),
+        design_version=int(raw.get("design_version", 1)),
+        input_config_path=config_path,
     )
     validate_experiment_spec_contract(spec)
     return spec
@@ -556,21 +585,37 @@ def build_experiment_grid(spec: ExperimentSpec) -> list[dict]:
     factor_names = list(spec.factors)
     runs = []
     if spec.run_matrix is not None:
-        entries = [
-            ({key: value for key, value in row.items() if key != "seed"}, row["seed"])
-            for row in spec.run_matrix
-        ]
+        entries = []
+        for row in spec.run_matrix:
+            reserved = {"seed", "config_overrides", "dimensions"}
+            factor_values = {key: value for key, value in row.items() if key not in reserved}
+            dimensions = dict(row.get("dimensions", {}))
+            if set(factor_values) != set(spec.factors):
+                raise ValueError("run_matrix rows must provide every configured factor")
+            factor_values.update(dimensions)
+            entries.append((factor_values, row["seed"], dict(row.get("config_overrides", {}))))
     else:
         cells = itertools.product(*(spec.factors[name] for name in factor_names))
         entries = (
-            (dict(zip(factor_names, values)), seed)
+            (dict(zip(factor_names, values)), seed, {})
             for values in cells
             for seed in spec.seeds
         )
-    for factor_values, seed in entries:
+    for factor_values, seed, run_config_overrides in entries:
         validated_seed = validate_seed(seed)
         scientific_config = dict(spec.base_config)
-        scientific_config.update(factor_values)
+        scientific_config.update(
+            {key: value for key, value in factor_values.items() if key in spec.factors}
+        )
+        scientific_config.update(run_config_overrides)
+        if scientific_config.get("experiment_profile") in {
+            "apc_load_sweep_standard_v1",
+            "apc_load_sweep_pilot_v1",
+        }:
+            mode = factor_values.get("node_ptx_mode")
+            if mode not in {"adaptive", "fixed"}:
+                raise ValueError("Standard APC load runs require adaptive or fixed mode")
+            scientific_config["relay_ptx_mode"] = mode
         seed_overrides = spec.seed_config_overrides.get(validated_seed)
         if spec.seed_config_overrides and seed_overrides is None:
             raise ValueError(
@@ -620,6 +665,85 @@ def _source_fingerprint(project_root: Path) -> dict:
     return {"algorithm": "sha256", "files": files}
 
 
+def _git_head(project_root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "--verify", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip() or None
+
+
+def _git_worktree_provenance(project_root: Path) -> dict[str, Any]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), "status", "--porcelain=v1", "--untracked-files=all"],
+            check=True,
+            capture_output=True,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {"available": False}
+    status = result.stdout
+    return {
+        "available": True,
+        "worktree_dirty": bool(status),
+        "status_porcelain_sha256": hashlib.sha256(status).hexdigest(),
+    }
+
+
+def _portable_standard_spec(spec: ExperimentSpec, project_root: Path) -> dict[str, Any]:
+    value = spec.serializable()
+    value["output_dir"] = "."
+
+    def normalize(item: Any, key: str | None = None) -> Any:
+        if isinstance(item, dict):
+            return {name: normalize(child, name) for name, child in item.items()}
+        if isinstance(item, list):
+            return [normalize(child, key) for child in item]
+        if key and key.endswith("_manifest") and isinstance(item, str):
+            path = Path(item).expanduser()
+            if path.is_absolute():
+                try:
+                    return path.resolve().relative_to(project_root.resolve()).as_posix()
+                except ValueError:
+                    return item
+        return item
+
+    return normalize(value)
+
+
+def _update_sweep_manifest_progress(
+    paths: ExperimentArtifactPaths,
+    run_id: str,
+    status: str,
+) -> None:
+    if not paths.is_sweep_standard or not paths.manifest.is_file():
+        return
+    manifest = json.loads(paths.manifest.read_text(encoding="utf-8"))
+    run_statuses = dict(manifest.get("run_statuses", {}))
+    run_statuses[run_id] = "PASS" if status == "SKIPPED" else status
+    manifest.update(
+        {
+            "run_statuses": run_statuses,
+            "completed_run_count": sum(value == "PASS" for value in run_statuses.values()),
+            "failed_run_count": sum(value == "FAILED" for value in run_statuses.values()),
+            "incomplete_run_count": sum(
+                value not in {"PASS", "FAILED"} for value in run_statuses.values()
+            ),
+            "status": "RUNNING",
+        }
+    )
+    atomic_write_json(paths.manifest, manifest)
+
+
+
+
 def _environment_manifest() -> dict:
     packages = {}
     for module in (np, pd):
@@ -647,10 +771,81 @@ def _environment_manifest() -> dict:
 def initialize_experiment(spec: ExperimentSpec, project_root: Path) -> Path:
     paths = ExperimentArtifactPaths.from_spec(spec)
     experiment_dir = paths.experiment_dir
-    experiment_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = paths.manifest
-    spec_value = spec.serializable()
+    spec_value = (
+        _portable_standard_spec(spec, project_root)
+        if paths.is_sweep_standard
+        else spec.serializable()
+    )
     spec_digest = content_hash(spec_value)
+    if paths.is_sweep_standard:
+        validate_cohort_reservation(spec)
+        if manifest_path.exists():
+            raise FileExistsError(
+                f"Sweep cohort already has a manifest and is immutable: {experiment_dir}"
+            )
+        grid = build_experiment_grid(spec)
+        git_head = _git_head(project_root)
+        source_fingerprint = _source_fingerprint(project_root)
+        source_git = _git_worktree_provenance(project_root)
+        consume_cohort_reservation(spec)
+        paths.ensure()
+        experiment_profile = spec.base_config.get(
+            "experiment_profile", DEFAULT_CONFIG["experiment_profile"]
+        )
+        manifest = {
+            "pipeline_version": PIPELINE_VERSION,
+            "simulator_version": SIMULATOR_VERSION,
+            "simulator_api_version": SIMULATOR_API_VERSION,
+            "output_layout_version": SWEEP_OUTPUT_LAYOUT_VERSION,
+            "artifact_directories": paths.directory_map(),
+            "aggregation_version": AGGREGATION_VERSION,
+            "experiment_contract_version": experiment_contract_version(experiment_profile),
+            "created_at": spec.created_at,
+            "execution_id": spec.execution_id,
+            "timezone": spec.timezone,
+            "spec_hash": spec_digest,
+            "spec": spec_value,
+            "source_fingerprint": source_fingerprint,
+            "source_fingerprint_sha256": content_hash(source_fingerprint),
+            "dirty_source_fingerprint_sha256": content_hash(source_fingerprint),
+            "source_git": {"head": git_head, **source_git},
+            "environment": _environment_manifest(),
+            "input_configuration_hash": content_hash(spec.base_config),
+            "git_head": git_head,
+            "status": "INITIALIZED",
+            **standard_manifest_fields(
+                spec,
+                expected_run_count=len(grid),
+                run_ids=[row["run_id"] for row in grid],
+                git_head=git_head,
+            ),
+        }
+        atomic_write_json(manifest_path, manifest)
+        atomic_write_json(
+            paths.analysis_manifest,
+            {
+                "analysis_id": f"{spec.experiment_id}-analysis-v1",
+                "analysis_version": 1,
+                "source_cohort_id": spec.experiment_id,
+                "inputs": [],
+                "generator": None,
+                "metrics": {},
+                "grouping_dimensions": list(spec.factors),
+                "seed_aggregation": {
+                    "method": "mean and sample standard deviation",
+                    "confidence_interval": "Student-t",
+                    "confidence_level": spec.confidence_level,
+                },
+                "included_model_variants": None,
+                "figures": [],
+                "tables": [],
+                "status": "PENDING",
+            },
+        )
+        return experiment_dir
+
+    experiment_dir.mkdir(parents=True, exist_ok=True)
     if manifest_path.exists():
         with manifest_path.open("r", encoding="utf-8") as handle:
             existing = json.load(handle)
@@ -683,7 +878,7 @@ def initialize_experiment(spec: ExperimentSpec, project_root: Path) -> Path:
             "pipeline_version": PIPELINE_VERSION,
             "simulator_version": SIMULATOR_VERSION,
             "simulator_api_version": SIMULATOR_API_VERSION,
-            "output_layout_version": OUTPUT_LAYOUT_VERSION,
+            "output_layout_version": spec.output_layout_version,
             "artifact_directories": paths.directory_map(),
             "aggregation_version": AGGREGATION_VERSION,
             "experiment_contract_version": experiment_contract_version(experiment_profile),
@@ -712,6 +907,15 @@ def _annotate_table(
         "seed": run["seed"],
         **run["factors"],
     }
+    if (
+        spec.base_config.get("experiment_profile") in {
+            "apc_load_sweep_standard_v1", "apc_load_sweep_pilot_v1"
+        }
+        and "node_ptx_mode" in run["factors"]
+    ):
+        annotations["apc_mode"] = (
+            "AA" if run["factors"]["node_ptx_mode"] == "adaptive" else "FF"
+        )
     for key, value in reversed(list(annotations.items())):
         if key in result.columns:
             result[key] = value
@@ -818,7 +1022,7 @@ def execute_one_run(
     resume: bool = True,
 ) -> str:
     resolved_simulator_config = _resolved_simulator_config(run)
-    paths = ExperimentArtifactPaths(experiment_dir).ensure()
+    paths = ExperimentArtifactPaths.for_experiment(experiment_dir).ensure()
     run_dir = paths.runs / run["run_id"]
     tables_dir = run_dir / "tables"
     status_path = run_dir / "status.json"
@@ -854,6 +1058,8 @@ def execute_one_run(
         "seed": run["seed"],
         "factors": run["factors"],
         "scientific_config": run["scientific_config"],
+        "sweep_profile": str(spec.run_annotations.get("sweep_profile", "production")),
+        "run_annotations": dict(spec.run_annotations),
         "resolved_simulator_config": resolved_simulator_config,
         "config_hash": content_hash(resolved_simulator_config),
     }
@@ -987,7 +1193,7 @@ def _print_progress(message: str, *, enabled: bool) -> None:
 
 def _read_passed_run_dirs(experiment_dir: Path) -> list[Path]:
     passed = []
-    runs_dir = ExperimentArtifactPaths(experiment_dir).runs
+    runs_dir = ExperimentArtifactPaths.for_experiment(experiment_dir).runs
     if not runs_dir.exists():
         return passed
     for run_dir in sorted(path for path in runs_dir.iterdir() if path.is_dir()):
@@ -1183,7 +1389,7 @@ def _master_filename_for_table_key(
 
 
 def _read_experiment_spec_from_manifest(experiment_dir: Path) -> ExperimentSpec:
-    manifest_path = ExperimentArtifactPaths(experiment_dir).manifest
+    manifest_path = ExperimentArtifactPaths.for_experiment(experiment_dir).manifest
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Experiment manifest missing: {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1235,7 +1441,7 @@ def rebuild_scientific_master_tables(
     expected_ids = [row["run_id"] for row in planned]
     if len(expected_ids) != len(set(expected_ids)):
         raise ValueError("Expected run matrix contains duplicate run IDs")
-    paths = ExperimentArtifactPaths(experiment_dir)
+    paths = ExperimentArtifactPaths.for_experiment(experiment_dir)
     run_dirs_by_id = {
         directory.name: directory
         for directory in paths.runs.iterdir()
@@ -1437,7 +1643,7 @@ def _annotated_empty_schema(
 ) -> list[str]:
     """Recreate producer columns plus the pipeline's run annotations."""
     columns = list(producer_columns)
-    manifest_path = ExperimentArtifactPaths(experiment_dir).manifest
+    manifest_path = ExperimentArtifactPaths.for_experiment(experiment_dir).manifest
     if not manifest_path.is_file():
         return columns
     spec = json.loads(manifest_path.read_text(encoding="utf-8")).get("spec", {})
@@ -1462,7 +1668,8 @@ def rebuild_master_tables(
             "master_table_mode must be one of "
             f"{sorted(MASTER_TABLE_MODES)}"
         )
-    master_dir = ExperimentArtifactPaths(experiment_dir).ensure().master
+    artifact_paths = ExperimentArtifactPaths.for_experiment(experiment_dir).ensure()
+    master_dir = artifact_paths.aggregate if artifact_paths.is_sweep_standard else artifact_paths.master
     passed_dirs = _read_passed_run_dirs(experiment_dir)
     table_names = master_table_names_for_profile(experiment_profile)
     managed = persistence_profile in {"scientific", "diagnostic"}
@@ -1690,8 +1897,12 @@ def aggregate_experiment(
     master_tables: Mapping[str, pd.DataFrame],
     allow_incomplete: bool = False,
 ) -> dict[str, pd.DataFrame]:
-    aggregate_dir = ExperimentArtifactPaths(experiment_dir).ensure().aggregate
+    aggregate_dir = ExperimentArtifactPaths.for_experiment(experiment_dir).ensure().aggregate
     factor_columns = list(spec.factors)
+    for run in build_experiment_grid(spec):
+        for name in run["factors"]:
+            if name not in factor_columns:
+                factor_columns.append(name)
     core = master_tables.get("all_runs_core_summary.csv", pd.DataFrame())
     seed_report = validate_seed_completeness(core, factor_columns, spec.seeds)
     atomic_write_csv(aggregate_dir / "seed_completeness.csv", seed_report)
@@ -1765,7 +1976,7 @@ def run_experiment(
             "pipeline_version": PIPELINE_VERSION,
             "simulator_version": SIMULATOR_VERSION,
             "simulator_api_version": SIMULATOR_API_VERSION,
-            "output_layout_version": OUTPUT_LAYOUT_VERSION,
+            "output_layout_version": spec.output_layout_version or OUTPUT_LAYOUT_VERSION,
             "experiment_id": spec.experiment_id,
             "experiment_dir": str(paths.experiment_dir),
             "artifact_directories": paths.directory_map(),
@@ -1773,8 +1984,13 @@ def run_experiment(
             "runs": grid,
         }
 
-    experiment_dir = initialize_experiment(spec, project_root)
-    paths = ExperimentArtifactPaths(experiment_dir)
+    try:
+        experiment_dir = initialize_experiment(spec, project_root)
+    except Exception as exc:
+        if spec.output_layout_version == SWEEP_OUTPUT_LAYOUT_VERSION:
+            _record_standard_initialization_failure(spec, project_root, exc)
+        raise
+    paths = ExperimentArtifactPaths.for_experiment(experiment_dir)
     counts = {"PASS": 0, "FAILED": 0, "SKIPPED": 0}
     total_runs = len(grid)
     _print_progress(
@@ -1794,6 +2010,7 @@ def run_experiment(
         run_started = perf_counter()
         status = execute_one_run(spec, experiment_dir, run, resume=resume)
         counts[status] += 1
+        _update_sweep_manifest_progress(paths, run["run_id"], status)
         _print_progress(
             f"{prefix} {status} | elapsed={perf_counter() - run_started:.2f}s",
             enabled=show_progress,
@@ -1863,7 +2080,7 @@ def run_experiment(
         "pipeline_version": PIPELINE_VERSION,
         "simulator_version": SIMULATOR_VERSION,
         "simulator_api_version": SIMULATOR_API_VERSION,
-        "output_layout_version": OUTPUT_LAYOUT_VERSION,
+        "output_layout_version": spec.output_layout_version,
         "artifact_directories": paths.directory_map(),
         "experiment_id": spec.experiment_id,
         "master_table_mode": spec.master_table_mode,
@@ -1939,7 +2156,55 @@ def run_experiment(
             ),
         }
     )
+    if paths.is_sweep_standard:
+        if policy is None and cohort_runs_complete and master_build_error is None:
+            summary["aggregation_status"] = "FINALIZED"
+        complete = bool(
+            cohort_runs_complete
+            and summary["seed_grid_complete"]
+            and summary.get("aggregation_status") == "FINALIZED"
+            and counts["FAILED"] == 0
+        )
+        summary["status"] = "COMPLETE" if complete else "INCOMPLETE"
     atomic_write_json(status_path, summary)
+    if paths.is_sweep_standard:
+        manifest = json.loads(paths.manifest.read_text(encoding="utf-8"))
+        run_statuses = {}
+        for run in planned_grid:
+            run_status_path = paths.runs / run["run_id"] / "status.json"
+            if run_status_path.is_file():
+                try:
+                    run_statuses[run["run_id"]] = json.loads(
+                        run_status_path.read_text(encoding="utf-8")
+                    ).get("status", "UNKNOWN")
+                except (OSError, ValueError, TypeError):
+                    run_statuses[run["run_id"]] = "INVALID_STATUS"
+            elif (paths.runs / run["run_id"] / "scientific_output_manifest.json").is_file():
+                run_statuses[run["run_id"]] = "PASS"
+            else:
+                run_statuses[run["run_id"]] = "INCOMPLETE"
+        manifest.update(
+            {
+                "status": summary["status"],
+                "finished_at": summary["finished_at"],
+                "completed_run_count": sum(value == "PASS" for value in run_statuses.values()),
+                "failed_run_count": sum(value == "FAILED" for value in run_statuses.values()),
+                "incomplete_run_count": sum(
+                    value not in {"PASS", "FAILED"} for value in run_statuses.values()
+                ),
+                "run_statuses": run_statuses,
+                "aggregate_status": summary.get("aggregation_status", "INCOMPLETE"),
+            }
+        )
+        atomic_write_json(paths.manifest, manifest)
+        if summary["status"] == "COMPLETE":
+            write_cohort_readme(
+                experiment_dir,
+                spec=spec,
+                run_count=len(planned_grid),
+                seed_list=list(spec.seeds),
+                source_fingerprint_hash=content_hash(manifest["source_fingerprint"]),
+            )
     _print_progress(
         (
             f"[PIPELINE] {summary['status']} | passed_on_disk="
@@ -1949,3 +2214,50 @@ def run_experiment(
         enabled=show_progress,
     )
     return summary
+
+
+def _record_standard_initialization_failure(
+    spec: ExperimentSpec, project_root: Path, error: Exception
+) -> None:
+    """Leave machine-readable failure evidence for an owned reservation."""
+    reservation_path = spec.cohort_reservation_path
+    if reservation_path is None:
+        return
+    paths = ExperimentArtifactPaths.from_spec(spec)
+    current: dict[str, Any] = {}
+    if paths.manifest.is_file():
+        try:
+            current = json.loads(paths.manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            current = {}
+    if current.get("execution_id") not in {None, spec.execution_id}:
+        return
+    if current.get("status") == "COMPLETE":
+        return
+    failure = f"{type(error).__name__}: {error}"
+    current.update({
+        "experiment_id": spec.experiment_id,
+        "execution_id": spec.execution_id,
+        "output_layout_version": SWEEP_OUTPUT_LAYOUT_VERSION,
+        "status": "FAILED",
+        "initialization_error_type": type(error).__name__,
+        "initialization_error": failure,
+    })
+    atomic_write_json(paths.manifest, current)
+    atomic_write_json(paths.status, {
+        "experiment_id": spec.experiment_id,
+        "execution_id": spec.execution_id,
+        "status": "FAILED",
+        "seed_grid_complete": False,
+        "initialization_error_type": type(error).__name__,
+        "initialization_error": failure,
+    })
+    if Path(reservation_path).is_file():
+        try:
+            reservation = json.loads(Path(reservation_path).read_text(encoding="utf-8"))
+            if reservation.get("execution_id") == spec.execution_id:
+                reservation["status"] = "FAILED"
+                reservation["failure"] = failure
+                atomic_write_json(Path(reservation_path), reservation)
+        except (OSError, ValueError, TypeError):
+            pass

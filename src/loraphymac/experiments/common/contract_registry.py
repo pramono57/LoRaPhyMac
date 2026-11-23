@@ -111,13 +111,22 @@ from loraphymac.experiments.apc_load_sweep.contract import (
     APC_LOAD_SWEEP_FULL_FACTORIAL_PROFILE,
     APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_CONTRACT,
     APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE,
+    APC_LOAD_SWEEP_PILOT_CONTRACT,
+    APC_LOAD_SWEEP_PILOT_PROFILE,
+    APC_LOAD_SWEEP_STANDARD_PROFILE,
+    APC_LOAD_SWEEP_STANDARD_CONTRACT,
     APC_LOAD_SWEEP_RUN_TABLES,
     apc_load_sweep_config_violations,
     apc_load_sweep_full_factorial_config_violations,
     apc_load_sweep_profile_acceptance_config_violations,
+    apc_load_sweep_pilot_config_violations,
+    apc_load_sweep_standard_config_violations,
     validate_apc_load_sweep_outputs,
     validate_apc_load_sweep_spec,
     validate_apc_load_sweep_full_factorial_spec,
+    validate_apc_load_sweep_standard_spec,
+    validate_apc_load_sweep_pilot_spec,
+    validate_apc_load_sweep_pilot_grid,
 )
 from loraphymac.experiments.apc_feedback_robustness_sweep.contract import (
     APC_FEEDBACK_ROBUSTNESS_PROFILE,
@@ -241,6 +250,27 @@ _CONTRACTS = {
         "expected_run_count": 60,
         "config_violations": apc_load_sweep_full_factorial_config_violations,
         "validate_spec": validate_apc_load_sweep_full_factorial_spec,
+        "validate_outputs": validate_apc_load_sweep_outputs,
+        "run_tables": lambda config: dict(APC_LOAD_SWEEP_RUN_TABLES),
+        "aggregation_metrics": R1_7_AGGREGATION_METRICS,
+        "all_table_filenames": frozenset(APC_LOAD_SWEEP_RUN_TABLES.values()),
+    },
+    APC_LOAD_SWEEP_STANDARD_PROFILE: {
+        "version": APC_LOAD_SWEEP_STANDARD_CONTRACT,
+        "expected_run_count": 120,
+        "config_violations": apc_load_sweep_standard_config_violations,
+        "validate_spec": validate_apc_load_sweep_standard_spec,
+        "validate_outputs": validate_apc_load_sweep_outputs,
+        "run_tables": lambda config: dict(APC_LOAD_SWEEP_RUN_TABLES),
+        "aggregation_metrics": R1_7_AGGREGATION_METRICS,
+        "all_table_filenames": frozenset(APC_LOAD_SWEEP_RUN_TABLES.values()),
+    },
+    APC_LOAD_SWEEP_PILOT_PROFILE: {
+        "version": APC_LOAD_SWEEP_PILOT_CONTRACT,
+        "expected_run_count": 2,
+        "config_violations": apc_load_sweep_pilot_config_violations,
+        "validate_spec": validate_apc_load_sweep_pilot_spec,
+        "validate_grid": validate_apc_load_sweep_pilot_grid,
         "validate_outputs": validate_apc_load_sweep_outputs,
         "run_tables": lambda config: dict(APC_LOAD_SWEEP_RUN_TABLES),
         "aggregation_metrics": R1_7_AGGREGATION_METRICS,
@@ -402,6 +432,23 @@ def validate_experiment_grid_contract(spec: Any, runs: Sequence[Mapping]) -> Non
     if contract is None:
         return
     expected = int(contract["expected_run_count"])
+    if getattr(spec, "output_layout_version", None) == "sweep_cohort_v1":
+        extra_factor_names = {
+            key
+            for run in runs
+            for key in run.get("factors", {})
+            if key not in getattr(spec, "factors", {})
+        }
+        if extra_factor_names:
+            expected *= len(
+                {
+                    tuple(
+                        (key, run.get("factors", {}).get(key))
+                        for key in sorted(extra_factor_names)
+                    )
+                    for run in runs
+                }
+            )
     if len(runs) != expected:
         raise ValueError(
             f"{profile} grid contract violation: expected {expected} runs, got {len(runs)}"
