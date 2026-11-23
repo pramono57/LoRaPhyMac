@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import fields
+from types import MappingProxyType
 
 import pytest
 
@@ -27,6 +29,7 @@ from loraphymac.experiments.apc_terrain_sweep.contract import (
 )
 from loraphymac.experiments.common.scientific_output_contract import (
     LEGACY_PERSISTENCE_PROFILE,
+    ScientificOutputContract,
     effective_persistence_profile,
     output_contract_for,
     preflight_output_violations,
@@ -61,6 +64,36 @@ CONTRACT_CONFIGS = (
     {"experiment_profile": APC_COMPARE_MODEL_TERRAIN_SWEEP_V2_PROFILE},
     {"experiment_profile": APC_COMPARE_MODEL_TERRAIN_SWEEP_V2_PILOT_PROFILE},
 )
+
+
+def test_scientific_output_contract_mapping_defaults_are_readonly_and_isolated():
+    required = {
+        "contract_id": "fixture_contract",
+        "required_metrics": frozenset(),
+        "required_additional_tables": frozenset(),
+        "minimum_collection_profile": "summary",
+        "minimum_persistence_profile": "scientific",
+        "producer_modules": (),
+        "granularity_categories": (),
+        "validator_dependencies": (),
+        "postprocessor_dependencies": (),
+        "provenance_fields": frozenset(),
+    }
+    first = ScientificOutputContract(**required)
+    second = ScientificOutputContract(**required)
+
+    assert tuple(item.name for item in fields(ScientificOutputContract))[-2:] == (
+        "conditional_table_semantics",
+        "table_schemas",
+    )
+    for name in ("conditional_table_semantics", "table_schemas"):
+        first_mapping = getattr(first, name)
+        second_mapping = getattr(second, name)
+        assert isinstance(first_mapping, MappingProxyType)
+        assert dict(first_mapping) == {}
+        assert first_mapping is not second_mapping
+        with pytest.raises(TypeError):
+            first_mapping["unexpected"] = ()
 
 
 @pytest.mark.parametrize("profile", ("summary", "detailed"))
