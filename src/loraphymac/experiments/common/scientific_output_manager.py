@@ -200,7 +200,10 @@ def collect_source_provenance(
         raise ScientificOutputError("relevant_paths must not be empty")
 
     def git(*args: str) -> bytes:
-        result = subprocess.run(["git", *args], cwd=root, check=False, capture_output=True)
+        result = subprocess.run(
+            ["git", *args], cwd=root, check=False, capture_output=True,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
         if result.returncode:
             message = result.stderr.decode("utf-8", errors="replace").strip()
             raise ScientificOutputError(f"git {' '.join(args[:2])} failed: {message}")
@@ -268,8 +271,11 @@ def collect_source_provenance(
 
 def _runtime_environment() -> dict[str, Any]:
     distributions = sorted(
-        (item.metadata.get("Name", item.name), item.version)
-        for item in importlib.metadata.distributions()
+        (
+            (item.metadata.get("Name") or item.name, item.version or "")
+            for item in importlib.metadata.distributions()
+        ),
+        key=lambda value: (str(value[0]).casefold(), str(value[1])),
     )
     return {
         "python": platform.python_version(),
@@ -289,7 +295,10 @@ def collect_complete_source_provenance(repository_root: str | Path) -> dict[str,
     root = Path(repository_root).resolve()
 
     def git(*args: str) -> list[str]:
-        result = subprocess.run(["git", *args], cwd=root, check=False, capture_output=True)
+        result = subprocess.run(
+            ["git", *args], cwd=root, check=False, capture_output=True,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+        )
         if result.returncode:
             raise ScientificOutputError(
                 "could not establish complete source provenance: "

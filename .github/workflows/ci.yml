@@ -27,7 +27,7 @@ jobs:
       - name: Lint
         run: python -m ruff check --no-cache src tests
       - name: Test
-        run: pytest -q -m "not extended_research"
+        run: pytest -q -m "not extended_research and not unreleased_standard"
 
   package:
     name: Build and inspect distribution

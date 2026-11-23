@@ -14,6 +14,8 @@ from loraphymac.metrics.instrumentation_metrics import (
 )
 from loraphymac.experiments.apc_load_sweep.contract import (
     APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE,
+    APC_LOAD_SWEEP_STANDARD_PROFILE,
+    APC_LOAD_SWEEP_PILOT_PROFILE,
 )
 from loraphymac.experiments.apc_compare_model_terrain_sweep.contract import (
     APC_COMPARE_MODEL_TERRAIN_SWEEP_V2_PROFILE,
@@ -35,6 +37,8 @@ _NODE_CHANNEL_DUTY_PROFILES = frozenset(
         "apc_load_sweep_final_v1",
         "apc_load_sweep_full_factorial_v1",
         APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE,
+        APC_LOAD_SWEEP_STANDARD_PROFILE,
+        APC_LOAD_SWEEP_PILOT_PROFILE,
         APC_COMPARE_MODEL_TERRAIN_SWEEP_V2_PROFILE,
         APC_COMPARE_MODEL_TERRAIN_SWEEP_V2_PILOT_PROFILE,
         APC_TERRAIN_PROFILE_FULL_SWEEP_PROFILE,

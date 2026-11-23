@@ -36,22 +36,40 @@ experiment specification. Execution and publication concerns are separated:
   LoRa tables and figures;
 - `src/loraphymac/publications/paper2_scalability/` for Paper 2 outputs.
 
-### Official IJIES Reviewer
+### APC Load Sweep and IJIES R1.7
 
-The current R1.7 implementation is the APC Load Sweep at
-[`src/loraphymac/experiments/apc_load_sweep/`](src/loraphymac/experiments/apc_load_sweep/).
-Its contract is `apc_load_sweep_full_factorial_v1`: FF and AA, four node
-counts × three reporting intervals × five seeds, for 120 runs total. The
-official configs are
+The APC Load runner defaults to the Minimal APC Load Standard V1.0 contract.
+Its [`standard_v1.json`](src/loraphymac/experiments/apc_load_sweep/configs/standard_v1.json)
+specifies the paired AA/FF grid: four node counts × three reporting periods ×
+five seeds, for 120 runs. A read-only grid preview is available with:
+
+```bash
+PYTHONPATH=src python -m loraphymac.experiments.apc_load_sweep.run --dry-run
+```
+
+Selecting `--profile pilot` requires an isolated `--output-root`; pilot output
+is two-run, non-production integration evidence. Standard cohorts use the
+`sweep_cohort_v1` layout, reserve a new cohort for each execution, and do not
+resume an existing cohort. A Standard production sweep was not run as part of
+this release preparation.
+
+The IJIES R1.7 full-factorial workflow remains explicitly available through
+the positional legacy configurations
 [`ff_full_factorial_v1.json`](src/loraphymac/experiments/apc_load_sweep/configs/ff_full_factorial_v1.json)
 and
 [`aa_full_factorial_v1.json`](src/loraphymac/experiments/apc_load_sweep/configs/aa_full_factorial_v1.json).
-The latest validated rerun completed with FF 60/60 PASS and AA 60/60 PASS.
-Its generated run evidence is not included in this source-code release. The
-repository provides the experiment configurations, implementation, production
-launcher, and monitor needed to reproduce the study. Generated results are
-written locally under
+Each config plans 60 runs and uses the legacy `paper_artifacts_v1` lifecycle.
+The R1.7 production launcher continues to pass these configs explicitly, so
+its experiment parameters and historical output namespace remain unchanged.
+The latest validated R1.7 rerun completed with FF 60/60 PASS and AA 60/60
+PASS. Generated run evidence is not included in this source-code release;
+results are written locally under
 `artifacts/experiments/apc_load_sweep/full_factorial_v1/`.
+
+Legacy execution resumes completed runs by default; pass `--no-resume` to
+disable that behavior. Standard execution always reserves a new cohort and
+does not resume. See the [APC Load guide](src/loraphymac/experiments/apc_load_sweep/README.md)
+for explicit Standard and legacy commands and their output layouts.
 
 The older `scalability_relay_bottleneck` R1.7 Load configs are retained for
 historical compatibility, but are not the active production R1.7 experiment.
@@ -107,10 +125,12 @@ Run the complete test suite:
 pytest -q
 ```
 
-Public GitHub Actions excludes only tests that require frozen research
-artifacts. Run the public suite with
-`pytest -q -m "not extended_research"`; see [Test Suite Guide](docs/TESTING.md)
-for both scopes and their artifact requirements.
+The Minimal APC Load Standard release gate excludes tests requiring frozen
+research evidence (`extended_research`) and Unified Standard features outside
+this release (`unreleased_standard`). Run it with
+`pytest -q -m "not extended_research and not unreleased_standard"`. Excluded
+tests are not claimed as passing; see the [Test Suite Guide](docs/TESTING.md)
+for markers and commands to run them when their requirements are available.
 
 Validate the Paper 1 production grid without executing simulations:
 

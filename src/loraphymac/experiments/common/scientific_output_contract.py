@@ -8,7 +8,7 @@ this stage; the legacy writers are not changed here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -19,6 +19,8 @@ from loraphymac.experiments.apc_load_sweep.contract import (
     APC_LOAD_SWEEP_FINAL_PROFILE,
     APC_LOAD_SWEEP_FULL_FACTORIAL_PROFILE,
     APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE,
+    APC_LOAD_SWEEP_STANDARD_PROFILE,
+    APC_LOAD_SWEEP_PILOT_PROFILE,
 )
 from loraphymac.experiments.apc_feedback_robustness_sweep.contract import (
     APC_FEEDBACK_ROBUSTNESS_PROFILE,
@@ -58,6 +60,11 @@ PERSISTENCE_PROFILES = frozenset({"core", "scientific", "diagnostic"})
 LEGACY_PERSISTENCE_PROFILE = "legacy"
 
 
+def _empty_mapping_proxy() -> Mapping[Any, Any]:
+    """Return a fresh immutable empty mapping for dataclass defaults."""
+    return MappingProxyType({})
+
+
 @dataclass(frozen=True, slots=True)
 class ScientificOutputContract:
     """Requirements shared by profiles belonging to one experiment family."""
@@ -78,8 +85,12 @@ class ScientificOutputContract:
     # V2 event tables distinguish an inapplicable empty table from a missing
     # artifact, and from an applicable table whose schema is present but has no
     # events in this run.
-    conditional_table_semantics: Mapping[str, Mapping[str, str]] = MappingProxyType({})
-    table_schemas: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+    conditional_table_semantics: Mapping[str, Mapping[str, str]] = field(
+        default_factory=_empty_mapping_proxy
+    )
+    table_schemas: Mapping[str, tuple[str, ...]] = field(
+        default_factory=_empty_mapping_proxy
+    )
 
 
 _COMMON_METRICS = frozenset(
@@ -529,6 +540,8 @@ _PROFILE_TO_CONTRACT = MappingProxyType(
         # Pilot changes only the plan size/output profile; per-run scientific
         # evidence is the same as the full-factorial APC load-sweep contract.
         APC_LOAD_SWEEP_PROFILE_ACCEPTANCE_PILOT_PROFILE: _LOAD_SWEEP,
+        APC_LOAD_SWEEP_STANDARD_PROFILE: _LOAD_SWEEP,
+        APC_LOAD_SWEEP_PILOT_PROFILE: _LOAD_SWEEP,
         APC_LOAD_SWEEP_PROFILE: _LOAD_SWEEP,
         R1_7_LOAD_PROFILE: _LOAD_SWEEP,
         R1_7_DUTY_PROFILE: _LOAD_SWEEP,
