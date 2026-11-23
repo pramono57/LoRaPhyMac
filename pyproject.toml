@@ -59,6 +59,7 @@ namespaces = true
   "configs/*.json",
   "configs/models/*.json",
 ]
+"loraphymac.experiments.apc_load_sweep" = ["configs/*.json"]
 "loraphymac.experiments.apc_compare_model_terrain_sweep" = [
   "configs/*.json",
   "notebooks/*.ipynb",
@@ -83,6 +84,7 @@ markers = [
   "scientific: validates an independently derived formula or scientific invariant",
   "integration: tests interaction between multiple simulator components",
   "extended_research: requires frozen calibration, routing snapshots, production bundles, or other research evidence not included in the initial public source release",
+  "unreleased_standard: tests for Unified Sweep Standard features not included in the current minimal APC Load release",
 ]
 
 [tool.ruff]
