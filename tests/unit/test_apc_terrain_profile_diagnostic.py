@@ -29,8 +29,7 @@ from loraphymac.experiments.common.multiseed_pipeline import (
 ROOT = Path(__file__).resolve().parents[2]
 DIAGNOSTIC_CONFIG = (
     ROOT
-    / "artifacts/diagnostic_runs_20261111/configs/"
-    "apc_terrain_profile_diagnostic_v1.json"
+    / "src/loraphymac/experiments/apc_terrain_sweep/configs/diagnostic_v1.json"
 )
 OFFICIAL_TERRAIN_CONFIG = (
     ROOT / "src/loraphymac/experiments/apc_terrain_sweep/configs/production_v1.json"
@@ -48,7 +47,6 @@ def test_official_terrain_cartesian_grid_remains_300_runs():
     )
 
 
-@pytest.mark.extended_research
 def test_explicit_diagnostic_matrix_resolves_exactly_ten_runs():
     spec = load_experiment_spec(DIAGNOSTIC_CONFIG)
     runs = build_experiment_grid(spec)
@@ -79,7 +77,6 @@ def test_explicit_diagnostic_matrix_resolves_exactly_ten_runs():
         assert config["application_horizon_policy"] == "right_censor_waiting_v1"
 
 
-@pytest.mark.extended_research
 def test_diagnostic_contract_accepts_conditional_empty_tables():
     spec = load_experiment_spec(DIAGNOSTIC_CONFIG)
     config = build_experiment_grid(spec)[0]["scientific_config"]
@@ -109,7 +106,6 @@ def test_diagnostic_contract_accepts_conditional_empty_tables():
     validate_diagnostic_outputs(config, summary, outputs)
 
 
-@pytest.mark.extended_research
 def test_explicit_matrix_rejects_missing_combination(tmp_path):
     raw = json.loads(DIAGNOSTIC_CONFIG.read_text())
     raw["run_matrix"].pop()
@@ -119,7 +115,6 @@ def test_explicit_matrix_rejects_missing_combination(tmp_path):
         load_experiment_spec(config_path)
 
 
-@pytest.mark.extended_research
 def test_explicit_matrix_rejects_cross_mode_combination(tmp_path):
     raw = json.loads(DIAGNOSTIC_CONFIG.read_text())
     raw["run_matrix"][0]["relay_ptx_mode"] = "adaptive"
@@ -129,7 +124,6 @@ def test_explicit_matrix_rejects_cross_mode_combination(tmp_path):
         load_experiment_spec(config_path)
 
 
-@pytest.mark.extended_research
 def test_diagnostic_contract_rejects_wrong_scheduling_and_official_is_unchanged(
     tmp_path,
 ):

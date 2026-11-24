@@ -8,7 +8,7 @@ this stage; the legacy writers are not changed here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -30,6 +30,15 @@ from loraphymac.experiments.apc_feedback_robustness_sweep.contract import (
 from loraphymac.experiments.apc_terrain_sweep.contract import (
     APC_TERRAIN_SWEEP_PROFILE,
     PAPER1_APC_PROFILE,
+)
+from loraphymac.experiments.apc_terrain_profile_diagnostic.contract import (
+    APC_TERRAIN_PROFILE_DIAGNOSTIC_PROFILE,
+)
+from loraphymac.experiments.apc_terrain_profile_diagnostic.full_sweep_contract import (
+    APC_TERRAIN_PROFILE_FULL_SWEEP_PROFILE,
+)
+from loraphymac.experiments.apc_terrain_profile_diagnostic.channel_occupancy_pilot_contract import (
+    APC_TERRAIN_CHANNEL_OCCUPANCY_PILOT_PROFILE,
 )
 from loraphymac.experiments.common.contract_registry import (
     experiment_aggregation_metrics,
@@ -535,6 +544,33 @@ _PROFILE_TO_CONTRACT = MappingProxyType(
         APC_CLOSED_LOOP_PROFILE: _CLOSED_LOOP,
         APC_TERRAIN_SWEEP_PROFILE: _TERRAIN_SWEEP,
         PAPER1_APC_PROFILE: _TERRAIN_SWEEP,
+        APC_TERRAIN_PROFILE_DIAGNOSTIC_PROFILE: replace(
+            _TERRAIN_SWEEP,
+            contract_id="apc_terrain_profile_diagnostic_scientific_v1",
+            required_additional_tables=frozenset(
+                experiment_run_tables(
+                    {"experiment_profile": APC_TERRAIN_PROFILE_DIAGNOSTIC_PROFILE}
+                )
+            ),
+        ),
+        APC_TERRAIN_PROFILE_FULL_SWEEP_PROFILE: replace(
+            _TERRAIN_SWEEP,
+            contract_id="apc_terrain_profile_full_sweep_scientific_v1",
+            required_additional_tables=frozenset(
+                experiment_run_tables(
+                    {"experiment_profile": APC_TERRAIN_PROFILE_FULL_SWEEP_PROFILE}
+                )
+            ),
+        ),
+        APC_TERRAIN_CHANNEL_OCCUPANCY_PILOT_PROFILE: replace(
+            _TERRAIN_SWEEP,
+            contract_id="apc_terrain_channel_occupancy_pilot_scientific_v1",
+            required_additional_tables=frozenset(
+                experiment_run_tables(
+                    {"experiment_profile": APC_TERRAIN_CHANNEL_OCCUPANCY_PILOT_PROFILE}
+                )
+            ),
+        ),
         APC_LOAD_SWEEP_FINAL_PROFILE: _LOAD_SWEEP,
         APC_LOAD_SWEEP_FULL_FACTORIAL_PROFILE: _LOAD_SWEEP,
         # Pilot changes only the plan size/output profile; per-run scientific

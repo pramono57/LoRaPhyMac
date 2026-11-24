@@ -1757,6 +1757,7 @@ def validate_seed_completeness(
     frame: pd.DataFrame,
     factor_columns: Sequence[str],
     expected_seeds: Sequence[int],
+    expected_run_matrix: Sequence[Mapping[str, Any]] | None = None,
 ) -> pd.DataFrame:
     report_columns = [
         *factor_columns,
@@ -1767,10 +1768,75 @@ def validate_seed_completeness(
         "duplicate_seed_count",
         "complete",
     ]
-    if frame.empty:
+    if frame.empty and expected_run_matrix is None:
         return pd.DataFrame(columns=report_columns)
     required = {"run_id", "seed", *factor_columns}
     missing = required.difference(frame.columns)
+    if missing and not (frame.empty and expected_run_matrix is not None):
+        raise ValueError(f"Master summary missing columns: {sorted(missing)}")
+    if expected_run_matrix is not None:
+        if not expected_run_matrix:
+            raise ValueError("expected_run_matrix must not be empty")
+        expected_by_cell: dict[tuple[Any, ...], set[int]] = {}
+        declared_identities = []
+        seed_contract = {int(value) for value in expected_seeds}
+        for index, run in enumerate(expected_run_matrix):
+            try:
+                cell = tuple(run[name] for name in factor_columns)
+                seed = int(run["seed"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"expected_run_matrix[{index}] lacks a factor or integer seed"
+                ) from exc
+            if seed not in seed_contract:
+                raise ValueError(
+                    f"expected_run_matrix[{index}].seed is outside expected_seeds"
+                )
+            expected_by_cell.setdefault(cell, set()).add(seed)
+            declared_identities.append((*cell, seed))
+        if len(declared_identities) != len(set(declared_identities)):
+            raise ValueError("expected_run_matrix contains duplicate factor/seed rows")
+        if not frame.empty and frame["run_id"].duplicated().any():
+            duplicates = frame.loc[frame["run_id"].duplicated(), "run_id"].tolist()
+            raise ValueError(f"Duplicate run_id rows: {duplicates[:10]}")
+
+        observed_by_cell: dict[tuple[Any, ...], pd.DataFrame] = {}
+        if not frame.empty:
+            if factor_columns:
+                grouped = frame.groupby(list(factor_columns), dropna=False, sort=True)
+            else:
+                working = frame.assign(__single_cell__="all")
+                grouped = working.groupby("__single_cell__", dropna=False, sort=True)
+            for keys, subset in grouped:
+                cell = keys if isinstance(keys, tuple) else (keys,)
+                observed_by_cell[tuple(cell)] = subset
+
+        rows = []
+        for cell in sorted(set(expected_by_cell) | set(observed_by_cell), key=repr):
+            subset = observed_by_cell.get(cell, frame.iloc[0:0])
+            observed_values = (
+                pd.to_numeric(subset["seed"], errors="raise").astype(int)
+                if not subset.empty else pd.Series(dtype=int)
+            )
+            observed = set(observed_values.tolist())
+            expected = expected_by_cell.get(cell, set())
+            duplicate_count = int(observed_values.duplicated().sum())
+            row = dict(zip(factor_columns, cell))
+            row.update(
+                {
+                    "expected_seed_count": len(expected),
+                    "observed_seed_count": len(observed),
+                    "missing_seeds": ",".join(map(str, sorted(expected - observed))),
+                    "unexpected_seeds": ",".join(map(str, sorted(observed - expected))),
+                    "duplicate_seed_count": duplicate_count,
+                    "complete": bool(
+                        expected and observed == expected and duplicate_count == 0
+                    ),
+                }
+            )
+            rows.append(row)
+        return pd.DataFrame(rows, columns=report_columns)
+
     if missing:
         raise ValueError(f"Master summary missing columns: {sorted(missing)}")
     if frame["run_id"].duplicated().any():
@@ -1904,7 +1970,12 @@ def aggregate_experiment(
             if name not in factor_columns:
                 factor_columns.append(name)
     core = master_tables.get("all_runs_core_summary.csv", pd.DataFrame())
-    seed_report = validate_seed_completeness(core, factor_columns, spec.seeds)
+    seed_report = validate_seed_completeness(
+        core,
+        factor_columns,
+        spec.seeds,
+        expected_run_matrix=spec.run_matrix,
+    )
     atomic_write_csv(aggregate_dir / "seed_completeness.csv", seed_report)
     if not allow_incomplete and (seed_report.empty or not seed_report["complete"].all()):
         raise ValueError("Seed grid is incomplete; inspect aggregate/seed_completeness.csv")
